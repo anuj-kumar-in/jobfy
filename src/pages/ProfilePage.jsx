@@ -493,8 +493,8 @@ IMPORTANT: Return ONLY the JSON object, nothing else. No explanations, no markdo
     ];
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-20 pb-12">
-            <div className="max-w-6xl mx-auto px-4">
+        <div className="min-h-screen bg-gray-50 pt-36 pb-12">
+            <div className="max-w-[95%] mx-auto px-4">
                 {/* Header */}
                 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 mb-8">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between">

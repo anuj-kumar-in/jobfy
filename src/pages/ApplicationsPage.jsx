@@ -125,8 +125,8 @@ const ApplicationsPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-20 pb-12">
-            <div className="max-w-7xl mx-auto px-4">
+        <div className="min-h-screen bg-gray-50 pt-36 pb-12">
+            <div className="max-w-[95%] mx-auto px-4">
                 {/* Header */}
                 <div className="mb-8">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -400,8 +400,8 @@ const ApplicationsPage = () => {
                                                                         }}
                                                                         disabled={isActive || isUpdating}
                                                                         className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${isActive
-                                                                                ? config.color + ' ring-2 ring-offset-1 ring-gray-400'
-                                                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                                            ? config.color + ' ring-2 ring-offset-1 ring-gray-400'
+                                                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                                                             } disabled:opacity-50`}
                                                                     >
                                                                         {isUpdating ? (

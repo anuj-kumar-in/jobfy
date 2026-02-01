@@ -99,7 +99,7 @@ const LandingPage = () => {
                 <div className="absolute top-20 left-10 w-72 h-72 bg-black/5 rounded-full blur-3xl animate-float"></div>
                 <div className="absolute bottom-20 right-10 w-96 h-96 bg-black/5 rounded-full blur-3xl animate-float delay-200"></div>
 
-                <div className="relative max-w-7xl mx-auto">
+                <div className="relative max-w-[95%] mx-auto">
                     <div className="text-center">
                         {/* Badge */}
                         <div className="inline-flex items-center space-x-2 px-4 py-2 bg-black text-white rounded-full text-sm font-medium mb-8 animate-fadeIn">
@@ -167,7 +167,7 @@ const LandingPage = () => {
 
             {/* Features Section */}
             <section id="features" className="py-24 px-4 bg-gray-50">
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-[95%] mx-auto">
                     <div className="text-center mb-16">
                         <span className="inline-block px-4 py-1 bg-black text-white rounded-full text-sm font-medium mb-4">
                             Powerful Features
@@ -199,7 +199,7 @@ const LandingPage = () => {
 
             {/* How It Works */}
             <section className="py-24 px-4 bg-white">
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-[95%] mx-auto">
                     <div className="text-center mb-16">
                         <span className="inline-block px-4 py-1 bg-black text-white rounded-full text-sm font-medium mb-4">
                             Simple Process
@@ -238,7 +238,7 @@ const LandingPage = () => {
 
             {/* Hackathon Challenge Section */}
             <section className="py-24 px-4 bg-black text-white">
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-[95%] mx-auto">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
                         <div>
                             <h2 className="text-4xl md:text-5xl font-bold mb-6">
@@ -336,7 +336,7 @@ const LandingPage = () => {
 
             {/* Footer */}
             <footer className="bg-black text-white py-16 px-4">
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-[95%] mx-auto">
                     <div className="flex flex-col md:flex-row justify-between items-center">
                         <div className="flex items-center space-x-2 mb-8 md:mb-0">
                             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">

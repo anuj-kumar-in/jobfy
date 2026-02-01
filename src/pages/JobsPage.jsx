@@ -289,6 +289,7 @@ const JobsPage = () => {
             }
 
             const rankedJobs = rankingResult.ranked_jobs;
+            console.log('Ranked jobs:', rankedJobs);
 
             setAiProgress(prev => ({
                 ...prev,
@@ -471,8 +472,8 @@ const JobsPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-20 pb-12">
-            <div className="max-w-7xl mx-auto px-4">
+        <div className="min-h-screen bg-gray-50 pt-36 pb-12">
+            <div className="max-w-[95%] mx-auto px-4">
                 {/* Header with Backend Status */}
                 <div className="mb-8">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -511,14 +512,14 @@ const JobsPage = () => {
                 </div>
 
                 {/* AI Pickup Banner */}
-                <div className="mb-8 p-6 bg-gradient-to-r from-black to-gray-800 rounded-2xl text-white">
+                <div className="mb-8 p-6 bg-white border-2 border-black rounded-2xl text-black shadow-xl">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                         <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                            <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center relative">
-                                <Bot size={28} />
+                            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center relative border border-gray-200">
+                                <Bot size={28} className="text-black" />
                                 {backendConnected && (
-                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                                        <Wifi size={10} />
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center border border-white">
+                                        <Wifi size={10} className="text-white" />
                                     </div>
                                 )}
                             </div>
@@ -526,12 +527,12 @@ const JobsPage = () => {
                                 <h2 className="text-xl font-bold flex items-center space-x-2">
                                     <span>AI Pickup</span>
                                     {backendConnected && (
-                                        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-green-200">
                                             Agent Enabled
                                         </span>
                                     )}
                                 </h2>
-                                <p className="text-gray-300">
+                                <p className="text-gray-600 font-medium">
                                     Let AI analyze jobs and auto-apply based on your profile
                                 </p>
                             </div>
@@ -540,7 +541,7 @@ const JobsPage = () => {
                         {!aiMode ? (
                             <button
                                 onClick={startAIPickup}
-                                className="flex items-center space-x-2 px-6 py-3 bg-white text-black rounded-xl font-semibold hover:bg-gray-100 transition-all duration-300"
+                                className="flex items-center space-x-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-gray-800 transition-all duration-300 shadow-lg"
                             >
                                 <Sparkles size={20} />
                                 <span>Start AI Pickup</span>
@@ -550,7 +551,7 @@ const JobsPage = () => {
                                 {aiProgress.isRunning ? (
                                     <button
                                         onClick={stopAIPickup}
-                                        className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-all"
+                                        className="flex items-center space-x-2 px-6 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 border border-red-200 transition-all"
                                     >
                                         <Pause size={20} />
                                         <span>Stop</span>
@@ -558,7 +559,7 @@ const JobsPage = () => {
                                 ) : (
                                     <button
                                         onClick={startAIPickup}
-                                        className="flex items-center space-x-2 px-6 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-all"
+                                        className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 shadow-lg transition-all"
                                     >
                                         <Play size={20} />
                                         <span>Resume</span>
@@ -566,7 +567,7 @@ const JobsPage = () => {
                                 )}
                                 <button
                                     onClick={resetAIPickup}
-                                    className="flex items-center space-x-2 px-6 py-3 bg-white/20 text-white rounded-xl font-semibold hover:bg-white/30 transition-all"
+                                    className="flex items-center space-x-2 px-6 py-3 bg-gray-100 text-black rounded-xl font-semibold hover:bg-gray-200 border border-gray-200 transition-all"
                                 >
                                     <RefreshCw size={20} />
                                     <span>Reset</span>
@@ -577,31 +578,31 @@ const JobsPage = () => {
 
                     {/* AI Progress */}
                     {aiMode && (
-                        <div className="mt-6 pt-6 border-t border-white/20">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                                <div className="bg-white/10 rounded-xl p-4 text-center">
-                                    <div className="text-2xl font-bold">{aiProgress.totalJobs}</div>
-                                    <div className="text-sm text-gray-300">Total Jobs</div>
+                        <div className="mt-6 pt-6 border-t border-gray-200">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+                                    <div className="text-2xl font-bold text-black">{aiProgress.totalJobs}</div>
+                                    <div className="text-sm text-gray-600 font-medium">Total Jobs</div>
                                 </div>
-                                <div className="bg-white/10 rounded-xl p-4 text-center">
-                                    <div className="text-2xl font-bold">{aiProgress.processedJobs}</div>
-                                    <div className="text-sm text-gray-300">Processed</div>
+                                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+                                    <div className="text-2xl font-bold text-black">{aiProgress.processedJobs}</div>
+                                    <div className="text-sm text-gray-600 font-medium">Processed</div>
                                 </div>
-                                <div className="bg-green-500/20 rounded-xl p-4 text-center">
-                                    <div className="text-2xl font-bold text-green-400">{aiProgress.appliedJobs.length}</div>
-                                    <div className="text-sm text-green-300">Applied</div>
+                                <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
+                                    <div className="text-2xl font-bold text-green-600">{aiProgress.appliedJobs.length}</div>
+                                    <div className="text-sm text-green-700 font-bold">Applied</div>
                                 </div>
-                                <div className="bg-yellow-500/20 rounded-xl p-4 text-center">
-                                    <div className="text-2xl font-bold text-yellow-400">{aiProgress.skippedJobs.length}</div>
-                                    <div className="text-sm text-yellow-300">Skipped</div>
+                                <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4 text-center">
+                                    <div className="text-2xl font-bold text-yellow-600">{aiProgress.skippedJobs.length}</div>
+                                    <div className="text-sm text-yellow-700 font-bold">Skipped</div>
                                 </div>
                             </div>
 
                             {/* Progress bar */}
-                            <div className="relative">
-                                <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                            <div className="relative mb-6">
+                                <div className="h-3 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
                                     <div
-                                        className="h-full bg-white transition-all duration-300"
+                                        className="h-full bg-black transition-all duration-300"
                                         style={{ width: `${(aiProgress.processedJobs / aiProgress.totalJobs) * 100}%` }}
                                     />
                                 </div>
@@ -609,23 +610,23 @@ const JobsPage = () => {
 
                             {/* Current status */}
                             {aiProgress.status === 'ranking' && (
-                                <div className="mt-4 flex items-center space-x-3 text-sm">
-                                    <Loader className="animate-spin" size={16} />
+                                <div className="mt-4 flex items-center space-x-3 text-sm font-medium text-gray-700">
+                                    <Loader className="animate-spin text-black" size={16} />
                                     <span>🎯 AI is ranking jobs based on your profile...</span>
                                 </div>
                             )}
 
                             {aiProgress.currentJob && (
-                                <div className="mt-4 flex items-center space-x-3 text-sm">
-                                    <Loader className="animate-spin" size={16} />
+                                <div className="mt-4 flex items-center space-x-3 text-sm font-medium text-gray-800">
+                                    <Loader className="animate-spin text-black" size={16} />
                                     <span>
                                         {aiProgress.status === 'analyzing' && `Analyzing: ${aiProgress.currentJob.title} at ${aiProgress.currentJob.company}`}
                                         {aiProgress.status === 'applying' && `Applying to: ${aiProgress.currentJob.title} at ${aiProgress.currentJob.company}`}
                                     </span>
                                     {aiProgress.currentJob.matchScore && (
-                                        <span className={`px-2 py-0.5 rounded-full text-xs ${aiProgress.currentJob.matchScore >= 80 ? 'bg-green-500/20 text-green-400' :
-                                            aiProgress.currentJob.matchScore >= 60 ? 'bg-yellow-500/20 text-yellow-400' :
-                                                'bg-red-500/20 text-red-400'
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${aiProgress.currentJob.matchScore >= 80 ? 'bg-green-100 text-green-700 border-green-200' :
+                                            aiProgress.currentJob.matchScore >= 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                                'bg-red-100 text-red-700 border-red-200'
                                             }`}>
                                             {aiProgress.currentJob.matchScore}% Match
                                         </span>
@@ -634,11 +635,120 @@ const JobsPage = () => {
                             )}
 
                             {aiProgress.status === 'completed' && (
-                                <div className="mt-4 flex items-center space-x-2 text-green-400">
+                                <div className="mt-4 flex items-center space-x-2 text-green-600 font-bold">
                                     <CheckCircle size={20} />
                                     <span>AI Pickup completed! Applied to {aiProgress.appliedJobs.length} jobs.</span>
                                 </div>
                             )}
+
+                            {/* Detailed Job List during AI Mode */}
+                            {aiProgress.rankedJobs && aiProgress.rankedJobs.length > 0 && (
+                                <div className="mt-6 border-t border-gray-200 pt-4">
+                                    <h3 className="text-lg font-bold mb-3 text-black">Ranked Jobs Queue</h3>
+                                    <div className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto shadow-inner">
+                                        {aiProgress.rankedJobs.map((rankedItem, index) => {
+                                            const job = rankedItem.job;
+                                            const matchScore = rankedItem.match_percentage || Math.round(rankedItem.score * 100);
+
+                                            // Determine Status
+                                            let status = 'pending';
+                                            let statusColor = 'text-gray-500';
+                                            let statusIcon = null;
+
+                                            const isApplied = aiProgress.appliedJobs.some(j => j.id === job.id);
+                                            const isSkipped = aiProgress.skippedJobs.some(j => j.id === job.id);
+                                            const isCurrent = aiProgress.currentJob && aiProgress.currentJob.id === job.id;
+
+                                            // Specific check for "Already Applied" from previous history
+                                            const skippedItem = aiProgress.skippedJobs.find(j => j.id === job.id);
+                                            const isPreviouslyApplied = skippedItem?.reason === 'Already applied' || isJobAlreadyApplied(job.id);
+
+                                            if (isApplied) {
+                                                status = 'Applied';
+                                                statusColor = 'text-green-600 font-bold';
+                                                statusIcon = <CheckCircle size={16} />;
+                                            } else if (isPreviouslyApplied) {
+                                                status = 'Applied'; // Mark as Applied even if skipped
+                                                statusColor = 'text-green-600 font-bold';
+                                                statusIcon = <CheckCircle size={16} />;
+                                            } else if (isSkipped) {
+                                                status = 'Skipped';
+                                                statusColor = 'text-yellow-600 font-medium';
+                                                statusIcon = <AlertCircle size={16} />;
+                                            } else if (isCurrent) {
+                                                status = aiProgress.status === 'applying' ? 'Applying...' : 'Analyzing...';
+                                                statusColor = 'text-blue-600 font-bold';
+                                                statusIcon = <Loader className="animate-spin" size={16} />;
+                                            }
+
+                                            return (
+                                                <div key={job.id} className="border-b border-gray-200 last:border-0 hover:bg-white transition-colors bg-white/50">
+                                                    <div className="flex items-center justify-between p-3 cursor-pointer" onClick={() => {
+                                                        // Toggle simple expansion logic could go here
+                                                    }}>
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className="w-6 h-6 bg-black text-white rounded-full flex items-center justify-center text-xs font-bold shadow-sm">
+                                                                {index + 1}
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-bold text-sm text-black">{job.title}</div>
+                                                                <div className="text-xs text-gray-500 font-medium">{job.company}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center space-x-4">
+                                                            <div className={`text-xs font-bold px-2 py-0.5 rounded-full border ${matchScore >= 80 ? 'bg-green-100 text-green-700 border-green-200' : matchScore >= 60 ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+                                                                {matchScore}%
+                                                            </div>
+                                                            <div className={`flex items-center space-x-1 text-xs ${statusColor} w-28 justify-end`}>
+                                                                {statusIcon}
+                                                                <span>{status === 'pending' ? 'Pending' : status}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Explanation Section - Always show for current job, or if it has an explanation */}
+                                                    {(rankedItem.explanation || isCurrent) && (
+                                                        <div className="px-3 pb-3 pl-12">
+                                                            <div className="bg-white border border-gray-200 rounded-lg p-3 text-xs text-gray-700 space-y-2 shadow-sm">
+                                                                {rankedItem.explanation?.reasoning && (
+                                                                    <div className="italic border-l-4 border-black/20 pl-2 text-gray-600 font-medium">
+                                                                        "{rankedItem.explanation.reasoning}"
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                                                    {rankedItem.explanation?.matching_skills?.length > 0 && (
+                                                                        <div>
+                                                                            <span className="text-green-700 font-bold block mb-1">Matching Skills</span>
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {rankedItem.explanation.matching_skills.map(s => (
+                                                                                    <span key={s} className="bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded text-[10px] font-semibold">{s}</span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {rankedItem.explanation?.missing_skills?.length > 0 && (
+                                                                        <div>
+                                                                            <span className="text-red-700 font-bold block mb-1">Missing / Improve</span>
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {rankedItem.explanation.missing_skills.map(s => (
+                                                                                    <span key={s} className="bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded text-[10px] font-semibold">{s}</span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )
+                            }
                         </div>
                     )}
                 </div>

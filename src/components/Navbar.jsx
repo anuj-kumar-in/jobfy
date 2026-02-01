@@ -19,12 +19,11 @@ const Navbar = () => {
 
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center h-16">
+            <div className="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center h-24">
                     {/* Logo */}
                     <Link to="/" className="flex items-center space-x-2 group">
-                        <img src="/logo.svg" alt="Jobfy" className="h-10 w-10 group-hover:scale-105 transition-transform duration-300" />
-                        <span className="text-2xl font-bold text-black tracking-tight">Jobfy</span>
+                        <img src="/logo.svg" alt="Jobfy" className="h-24 w-30 group-hover:scale-105 transition-transform duration-300" />
                     </Link>
 
                     {/* Desktop Navigation */}

@@ -23,9 +23,7 @@ const Navbar = () => {
                 <div className="flex justify-between items-center h-16">
                     {/* Logo */}
                     <Link to="/" className="flex items-center space-x-2 group">
-                        <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-                            <span className="text-white font-bold text-xl">J</span>
-                        </div>
+                        <img src="/logo.svg" alt="Jobfy" className="h-10 w-10 group-hover:scale-105 transition-transform duration-300" />
                         <span className="text-2xl font-bold text-black tracking-tight">Jobfy</span>
                     </Link>
 

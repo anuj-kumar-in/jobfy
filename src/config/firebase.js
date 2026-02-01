@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
 // Firebase configuration - Replace with your own config
 const firebaseConfig = {
@@ -65,15 +65,172 @@ export const getUserProfile = async (userId) => {
 
 export const addAppliedJob = async (userId, jobData) => {
     try {
+        const applicationData = {
+            ...jobData,
+            appliedAt: new Date().toISOString(),
+            status: jobData.status || 'applied',
+            matchScore: jobData.matchScore || null,
+            explanation: jobData.explanation || null,
+            lastUpdated: new Date().toISOString()
+        };
+
         await updateDoc(doc(db, "users", userId), {
-            appliedJobs: arrayUnion({
-                ...jobData,
-                appliedAt: new Date().toISOString()
-            })
+            appliedJobs: arrayUnion(applicationData)
         });
         return true;
     } catch (error) {
         console.error("Error adding applied job:", error);
+        throw error;
+    }
+};
+
+// Update application status
+export const updateApplicationStatus = async (userId, jobId, newStatus, notes = '') => {
+    try {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        if (!userDoc.exists()) {
+            throw new Error("User not found");
+        }
+
+        const userData = userDoc.data();
+        const appliedJobs = userData.appliedJobs || [];
+
+        const updatedJobs = appliedJobs.map(job => {
+            if (job.id === jobId || job.jobId === jobId) {
+                return {
+                    ...job,
+                    status: newStatus,
+                    statusNotes: notes,
+                    lastUpdated: new Date().toISOString(),
+                    statusHistory: [
+                        ...(job.statusHistory || []),
+                        {
+                            status: newStatus,
+                            date: new Date().toISOString(),
+                            notes: notes
+                        }
+                    ]
+                };
+            }
+            return job;
+        });
+
+        await updateDoc(doc(db, "users", userId), {
+            appliedJobs: updatedJobs
+        });
+
+        return true;
+    } catch (error) {
+        console.error("Error updating application status:", error);
+        throw error;
+    }
+};
+
+// Get all applications for a user with filtering
+export const getApplications = async (userId, filters = {}) => {
+    try {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        if (!userDoc.exists()) {
+            return [];
+        }
+
+        let applications = userDoc.data().appliedJobs || [];
+
+        // Apply filters
+        if (filters.status) {
+            applications = applications.filter(app => app.status === filters.status);
+        }
+
+        if (filters.dateFrom) {
+            const fromDate = new Date(filters.dateFrom);
+            applications = applications.filter(app => new Date(app.appliedAt) >= fromDate);
+        }
+
+        if (filters.dateTo) {
+            const toDate = new Date(filters.dateTo);
+            applications = applications.filter(app => new Date(app.appliedAt) <= toDate);
+        }
+
+        // Sort by date (most recent first)
+        applications.sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt));
+
+        return applications;
+    } catch (error) {
+        console.error("Error getting applications:", error);
+        throw error;
+    }
+};
+
+// Get application statistics
+export const getApplicationStats = async (userId) => {
+    try {
+        const applications = await getApplications(userId);
+
+        const stats = {
+            total: applications.length,
+            byStatus: {},
+            byCompany: {},
+            avgMatchScore: 0,
+            thisWeek: 0,
+            thisMonth: 0
+        };
+
+        const now = new Date();
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        let totalMatchScore = 0;
+        let matchScoreCount = 0;
+
+        applications.forEach(app => {
+            // Count by status
+            const status = app.status || 'applied';
+            stats.byStatus[status] = (stats.byStatus[status] || 0) + 1;
+
+            // Count by company
+            const company = app.company || 'Unknown';
+            stats.byCompany[company] = (stats.byCompany[company] || 0) + 1;
+
+            // Average match score
+            if (app.matchScore) {
+                totalMatchScore += app.matchScore;
+                matchScoreCount++;
+            }
+
+            // Time-based counts
+            const appliedDate = new Date(app.appliedAt);
+            if (appliedDate >= weekAgo) {
+                stats.thisWeek++;
+            }
+            if (appliedDate >= monthAgo) {
+                stats.thisMonth++;
+            }
+        });
+
+        if (matchScoreCount > 0) {
+            stats.avgMatchScore = Math.round(totalMatchScore / matchScoreCount);
+        }
+
+        return stats;
+    } catch (error) {
+        console.error("Error getting application stats:", error);
+        throw error;
+    }
+};
+
+// Save AI ranking results
+export const saveRankingResults = async (userId, rankingData) => {
+    try {
+        await updateDoc(doc(db, "users", userId), {
+            lastRanking: {
+                timestamp: new Date().toISOString(),
+                totalJobs: rankingData.total_jobs,
+                topJobs: rankingData.ranked_jobs?.slice(0, 10) || []
+            }
+        });
+        return true;
+    } catch (error) {
+        console.error("Error saving ranking results:", error);
         throw error;
     }
 };

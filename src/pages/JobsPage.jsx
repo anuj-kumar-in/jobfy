@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { jobs as localJobs } from '../data/jobs';
-import { addAppliedJob } from '../config/firebase';
+import { addAppliedJob, saveRankingResults } from '../config/firebase';
 import {
     fetchBackendJobs,
     applyToJob,
     prepareApplicationPayload,
-    checkBackendHealth
+    checkBackendHealth,
+    checkAgentHealth,
+    rankJobsWithAI,
+    applyToJobQueue
 } from '../services/jobAgentApi';
 import {
     Search,
@@ -55,14 +57,9 @@ const JobsPage = () => {
     const [backendJobs, setBackendJobs] = useState([]);
     const [backendConnected, setBackendConnected] = useState(false);
     const [loadingBackend, setLoadingBackend] = useState(true);
-    const [jobSource, setJobSource] = useState('all'); // 'all', 'local', 'backend'
 
-    // Combined jobs from local + backend
-    const allJobs = jobSource === 'local'
-        ? localJobs
-        : jobSource === 'backend'
-            ? backendJobs
-            : [...localJobs, ...backendJobs];
+    // Combined jobs from backend only (local jobs removed)
+    const allJobs = backendJobs;
 
     // AI Pickup state
     const [aiMode, setAiMode] = useState(false);
@@ -76,6 +73,9 @@ const JobsPage = () => {
         status: 'idle', // idle, searching, analyzing, applying, completed, paused
         useBackendAgent: false // flag to use Krishna's agent
     });
+
+    // Ref to track running state (fixes stale closure in async loop)
+    const aiRunningRef = useRef(false);
 
     // Fetch backend jobs on mount
     useEffect(() => {
@@ -93,7 +93,7 @@ const JobsPage = () => {
                     setBackendJobs(jobs);
                     console.log(`✅ Connected to backend. Loaded ${jobs.length} jobs.`);
                 } else {
-                    console.log('⚠️ Backend not available, using local jobs only.');
+                    console.log('⚠️ Backend not available, no jobs to display.');
                 }
             } catch (error) {
                 console.error('Backend initialization error:', error);
@@ -137,7 +137,7 @@ const JobsPage = () => {
     // Reset visible jobs when filters change
     useEffect(() => {
         setVisibleJobs(JOBS_PER_PAGE);
-    }, [searchTerm, filterType, filterRemote, jobSource]);
+    }, [searchTerm, filterType, filterRemote]);
 
     // Load more jobs
     const handleViewMore = async () => {
@@ -209,115 +209,175 @@ const JobsPage = () => {
         }
     };
 
-    // AI Pickup - Start autonomous job application
+    // AI Pickup - Start autonomous job application using Agent API
     const startAIPickup = async () => {
         if (!user || !userProfile) {
             alert('Please complete your profile before using AI Pickup');
             return;
         }
 
+        if (filteredJobs.length === 0) {
+            alert('No jobs available to apply to');
+            return;
+        }
+
+        // Set the ref to true (this will be checked in the loop)
+        aiRunningRef.current = true;
+
         setAiMode(true);
         setAiProgress({
             isRunning: true,
-            totalJobs: filteredJobs.length,
+            totalJobs: 0,
             processedJobs: 0,
             appliedJobs: [],
             skippedJobs: [],
             currentJob: null,
-            status: 'searching',
-            useBackendAgent: backendConnected
+            status: 'ranking',
+            useBackendAgent: backendConnected,
+            rankedJobs: []
         });
 
-        // Prepare application payload once for all jobs
-        const { resume, bullets, proofs } = prepareApplicationPayload(userProfile);
+        try {
+            // Step 1: Get ranked jobs from Agent API
+            setAiProgress(prev => ({ ...prev, status: 'ranking' }));
 
-        // Process jobs using AI
-        for (let i = 0; i < filteredJobs.length && aiProgress.isRunning; i++) {
-            const job = filteredJobs[i];
+            const rankingResult = await rankJobsWithAI(userProfile, userProfile?.preferences?.jobTypes?.[0] || '');
 
-            // Skip already applied jobs
-            if (appliedJobIds.includes(job.id)) {
-                setAiProgress(prev => ({
-                    ...prev,
-                    processedJobs: prev.processedJobs + 1,
-                    skippedJobs: [...prev.skippedJobs, { ...job, reason: 'Already applied' }]
-                }));
-                continue;
+            if (rankingResult.error || !rankingResult.ranked_jobs?.length) {
+                console.warn('Ranking failed or no jobs, using local ranking');
+                // Fallback to local ranking
+                const localRanked = filteredJobs.map(job => ({
+                    job,
+                    score: calculateMatchScore(job, userProfile) / 100,
+                    match_percentage: calculateMatchScore(job, userProfile),
+                    should_apply: calculateMatchScore(job, userProfile) >= 70,
+                    explanation: {
+                        overall_score: calculateMatchScore(job, userProfile),
+                        skill_overlap: 0,
+                        matching_skills: [],
+                        reasoning: 'Ranked locally'
+                    }
+                })).sort((a, b) => b.score - a.score);
+
+                rankingResult.ranked_jobs = localRanked;
             }
+
+            // Save ranking results to Firebase
+            if (user) {
+                await saveRankingResults(user.uid, rankingResult);
+            }
+
+            const rankedJobs = rankingResult.ranked_jobs;
 
             setAiProgress(prev => ({
                 ...prev,
-                currentJob: job,
-                status: 'analyzing'
+                totalJobs: rankedJobs.length,
+                status: 'analyzing',
+                rankedJobs: rankedJobs
             }));
 
-            // AI analysis delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Prepare application payload once for all jobs
+            const { resume, bullets, proofs } = prepareApplicationPayload(userProfile);
 
-            // Calculate match score
-            const matchScore = calculateMatchScore(job, userProfile);
+            // Step 2: Process ranked jobs
+            for (let i = 0; i < rankedJobs.length && aiRunningRef.current; i++) {
+                const rankedItem = rankedJobs[i];
+                const job = rankedItem.job;
+                const matchScore = rankedItem.match_percentage || Math.round(rankedItem.score * 100);
+                const explanation = rankedItem.explanation;
 
-            if (matchScore >= 70) {
+                // Skip already applied jobs
+                if (appliedJobIds.includes(job.id)) {
+                    setAiProgress(prev => ({
+                        ...prev,
+                        processedJobs: prev.processedJobs + 1,
+                        skippedJobs: [...prev.skippedJobs, { ...job, matchScore, reason: 'Already applied' }]
+                    }));
+                    continue;
+                }
+
                 setAiProgress(prev => ({
                     ...prev,
-                    status: 'applying'
+                    currentJob: { ...job, matchScore, explanation },
+                    status: 'analyzing'
                 }));
 
-                try {
-                    // Apply via backend if connected
-                    if (backendConnected) {
-                        const backendResult = await applyToJob({
-                            jobId: job.jobId || job.id.toString(),
-                            studentName: userProfile?.fullName || user.displayName || 'Anonymous',
-                            resume: resume,
-                            bullets: bullets,
-                            proofs: proofs
+                // Brief delay for UX
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                // Check if we should apply based on agent recommendation
+                if (rankedItem.should_apply || matchScore >= 60) {
+                    setAiProgress(prev => ({
+                        ...prev,
+                        status: 'applying'
+                    }));
+
+                    try {
+                        // Apply via backend if connected
+                        if (backendConnected) {
+                            const backendResult = await applyToJob({
+                                jobId: job.jobId || job.id.toString(),
+                                studentName: userProfile?.fullName || user.displayName || 'Anonymous',
+                                resume: resume,
+                                bullets: bullets,
+                                proofs: proofs
+                            });
+
+                            if (backendResult.success) {
+                                console.log('✅ AI Applied via backend:', job.title, backendResult);
+                            } else {
+                                console.warn('⚠️ Backend apply failed for', job.title, ':', backendResult.error);
+                            }
+                        }
+
+                        // Save to Firebase for local tracking with full explanation
+                        await addAppliedJob(user.uid, {
+                            id: job.id,
+                            jobId: job.jobId,
+                            title: job.title,
+                            company: job.company,
+                            location: job.location,
+                            type: job.type,
+                            matchScore,
+                            explanation: explanation,
+                            source: job.source || 'agent',
+                            appliedViaBackend: backendConnected,
+                            appliedViaAI: true
                         });
 
-                        if (backendResult.success) {
-                            console.log('✅ AI Applied via backend:', job.title, backendResult);
-                        } else {
-                            console.warn('⚠️ Backend apply failed for', job.title, ':', backendResult.error);
-                        }
+                        setAiProgress(prev => ({
+                            ...prev,
+                            processedJobs: prev.processedJobs + 1,
+                            appliedJobs: [...prev.appliedJobs, { ...job, matchScore, explanation }]
+                        }));
+                    } catch (error) {
+                        console.error('AI Apply error:', error);
+                        setAiProgress(prev => ({
+                            ...prev,
+                            processedJobs: prev.processedJobs + 1,
+                            skippedJobs: [...prev.skippedJobs, { ...job, matchScore, reason: 'Application failed' }]
+                        }));
                     }
-
-                    // Save to Firebase for local tracking
-                    await addAppliedJob(user.uid, {
-                        id: job.id,
-                        title: job.title,
-                        company: job.company,
-                        location: job.location,
-                        type: job.type,
-                        matchScore,
-                        source: job.source || 'local',
-                        appliedViaBackend: backendConnected,
-                        appliedViaAI: true
-                    });
-
+                } else {
                     setAiProgress(prev => ({
                         ...prev,
                         processedJobs: prev.processedJobs + 1,
-                        appliedJobs: [...prev.appliedJobs, { ...job, matchScore }]
-                    }));
-                } catch (error) {
-                    console.error('AI Apply error:', error);
-                    setAiProgress(prev => ({
-                        ...prev,
-                        processedJobs: prev.processedJobs + 1,
-                        skippedJobs: [...prev.skippedJobs, { ...job, reason: 'Application failed' }]
+                        skippedJobs: [...prev.skippedJobs, {
+                            ...job,
+                            matchScore,
+                            reason: explanation?.reasoning || `Low match (${matchScore}%)`
+                        }]
                     }));
                 }
-            } else {
-                setAiProgress(prev => ({
-                    ...prev,
-                    processedJobs: prev.processedJobs + 1,
-                    skippedJobs: [...prev.skippedJobs, { ...job, reason: `Low match (${matchScore}%)` }]
-                }));
-            }
 
-            await new Promise(resolve => setTimeout(resolve, 500));
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        } catch (error) {
+            console.error('AI Pickup error:', error);
         }
 
+        // Mark as complete
+        aiRunningRef.current = false;
         setAiProgress(prev => ({
             ...prev,
             isRunning: false,
@@ -350,6 +410,7 @@ const JobsPage = () => {
 
     // Stop AI Pickup
     const stopAIPickup = () => {
+        aiRunningRef.current = false;
         setAiProgress(prev => ({
             ...prev,
             isRunning: false,
@@ -359,6 +420,7 @@ const JobsPage = () => {
 
     // Reset AI Pickup
     const resetAIPickup = () => {
+        aiRunningRef.current = false;
         setAiMode(false);
         setAiProgress({
             isRunning: false,
@@ -402,22 +464,11 @@ const JobsPage = () => {
                                         ? 'Connecting...'
                                         : backendConnected
                                             ? 'Agent Connected'
-                                            : 'Local Only'}
+                                            : 'No Jobs Available'}
                                 </span>
                             </div>
 
-                            {/* Job Source Filter */}
-                            {backendConnected && (
-                                <select
-                                    value={jobSource}
-                                    onChange={(e) => setJobSource(e.target.value)}
-                                    className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-black focus:border-black transition-all"
-                                >
-                                    <option value="all">All Jobs ({localJobs.length + backendJobs.length})</option>
-                                    <option value="local">Local Jobs ({localJobs.length})</option>
-                                    <option value="backend">Agent Jobs ({backendJobs.length})</option>
-                                </select>
-                            )}
+                            {/* Job Source Filter - Removed, using backend only */}
                         </div>
                     </div>
                 </div>
@@ -522,6 +573,13 @@ const JobsPage = () => {
                             </div>
 
                             {/* Current status */}
+                            {aiProgress.status === 'ranking' && (
+                                <div className="mt-4 flex items-center space-x-3 text-sm">
+                                    <Loader className="animate-spin" size={16} />
+                                    <span>🎯 AI is ranking jobs based on your profile...</span>
+                                </div>
+                            )}
+
                             {aiProgress.currentJob && (
                                 <div className="mt-4 flex items-center space-x-3 text-sm">
                                     <Loader className="animate-spin" size={16} />
@@ -529,6 +587,14 @@ const JobsPage = () => {
                                         {aiProgress.status === 'analyzing' && `Analyzing: ${aiProgress.currentJob.title} at ${aiProgress.currentJob.company}`}
                                         {aiProgress.status === 'applying' && `Applying to: ${aiProgress.currentJob.title} at ${aiProgress.currentJob.company}`}
                                     </span>
+                                    {aiProgress.currentJob.matchScore && (
+                                        <span className={`px-2 py-0.5 rounded-full text-xs ${aiProgress.currentJob.matchScore >= 80 ? 'bg-green-500/20 text-green-400' :
+                                                aiProgress.currentJob.matchScore >= 60 ? 'bg-yellow-500/20 text-yellow-400' :
+                                                    'bg-red-500/20 text-red-400'
+                                            }`}>
+                                            {aiProgress.currentJob.matchScore}% Match
+                                        </span>
+                                    )}
                                 </div>
                             )}
 

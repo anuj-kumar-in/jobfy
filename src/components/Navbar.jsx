@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, X, User, LogOut, Briefcase, FileText, Home } from 'lucide-react';
+import { Menu, X, User, LogOut, Briefcase, FileText, Home, ClipboardList } from 'lucide-react';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -44,6 +44,10 @@ const Navbar = () => {
                                 <Link to="/profile" className="flex items-center space-x-2 text-gray-600 hover:text-black transition-colors duration-300 font-medium">
                                     <FileText size={18} />
                                     <span>My Profile</span>
+                                </Link>
+                                <Link to="/applications" className="flex items-center space-x-2 text-gray-600 hover:text-black transition-colors duration-300 font-medium">
+                                    <ClipboardList size={18} />
+                                    <span>Applications</span>
                                 </Link>
                             </>
                         )}
@@ -105,6 +109,10 @@ const Navbar = () => {
                                     <Link to="/profile" className="flex items-center space-x-2 text-gray-600 hover:text-black transition-colors px-4 py-2">
                                         <FileText size={18} />
                                         <span>My Profile</span>
+                                    </Link>
+                                    <Link to="/applications" className="flex items-center space-x-2 text-gray-600 hover:text-black transition-colors px-4 py-2">
+                                        <ClipboardList size={18} />
+                                        <span>Applications</span>
                                     </Link>
                                 </>
                             )}

@@ -1,0 +1,143 @@
+[
+  {
+    "job_id": "J1",
+    "job_title": "Data Scientist Intern",
+    "company_name": "FakeAI",
+    "skills": ["Python", "ML", "Pandas"],
+    "location": "Remote",
+    "apply_url": "http://127.0.0.1:8001/apply"
+  },
+  {
+    "job_id": "J2",
+    "job_title": "Machine Learning Intern",
+    "company_name": "DeepLearn Co",
+    "skills": ["Python", "TensorFlow", "ML"],
+    "location": "Remote",
+    "apply_url": "http://127.0.0.1:8001/apply"
+  },
+  {
+    "job_id": "J3",
+    "job_title": "Backend Developer Intern",
+    "company_name": "WebTech",
+    "skills": ["Python", "Flask", "SQL"],
+    "location": "Onsite",
+    "apply_url": "http://127.0.0.1:8001/apply"
+  },
+  {
+    "job_id": "J4",
+    "job_title": "Frontend Developer Intern",
+    "company_name": "UIX Labs",
+    "skills": ["JavaScript", "React", "CSS"],
+    "location": "Remote",
+    "apply_url": "http://127.0.0.1:8001/apply"
+  },
+  {
+    "job_id": "J5",
+    "job_title": "AI Research Intern",
+    "company_name": "VisionAI",
+    "skills": ["Python", "PyTorch", "ML"],
+    "location": "Remote",
+    "apply_url": "http://127.0.0.1:8001/apply"
+  },
+  {
+    "job_id": "J6",
+    "job_title": "Data Analyst Intern",
+    "company_name": "DataInsights",
+    "skills": ["Python", "Excel", "SQL"],
+    "location": "Remote",
+    "apply_url": "http://127.0.0.1:8001/apply"
+  },
+  {
+    "job_id": "J7",
+    "job_title": "Software Engineer Intern",
+    "company_name": "CodeFactory",
+    "skills": ["C++", "Python"],
+    "location": "Remote",
+    "apply_url": "http://127.0.0.1:8001/apply"
+  },
+  {
+    "job_id": "J8",
+    "job_title": "Cloud Engineer Intern",
+    "company_name": "CloudWorks",
+    "skills": ["AWS", "Python"],
+    "location": "Remote",
+    "apply_url": "http://127.0.0.1:8001/apply"
+  },
+  {
+    "job_id": "J9",
+    "job_title": "NLP Research Intern",
+    "company_name": "LangAI",
+    "skills": ["Python", "Transformers", "ML"],
+    "location": "Remote",
+    "apply_url": "http://127.0.0.1:8001/apply"
+  },
+  {
+    "job_id": "J10",
+    "job_title": "Robotics Intern",
+    "company_name": "MechBots",
+    "skills": ["C++", "ROS", "Python"],
+    "location": "Onsite",
+    "apply_url": "http://127.0.0.1:8001/apply"
+  },
+  {
+    "id": 1,
+    "title": "Software Engineer Intern",
+    "company": "Google",
+    "location": "Mountain View, CA",
+    "type": "Internship",
+    "salary": "$8,000 - $10,000/month",
+    "description": "Join Google's engineering team to work on cutting-edge technology. You'll collaborate with world-class engineers on products used by billions.",
+    "requirements": [
+      "Currently pursuing BS/MS in Computer Science or related field",
+      "Strong programming skills in Python, Java, or C++",
+      "Understanding of data structures and algorithms",
+      "Excellent problem-solving abilities"
+    ],
+    "skills": ["Python", "Java", "C++", "Algorithms", "Data Structures"],
+    "posted": "2 days ago",
+    "deadline": "2026-03-01",
+    "remote": true,
+    "logo": "https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png"
+  },
+  {
+    "id": 2,
+    "title": "Frontend Developer",
+    "company": "Meta",
+    "location": "Menlo Park, CA",
+    "type": "Full-time",
+    "salary": "$120,000 - $180,000/year",
+    "description": "Build the next generation of social experiences. Work on React-based applications that connect billions of people worldwide.",
+    "requirements": [
+      "3+ years of experience with React.js",
+      "Strong understanding of JavaScript/TypeScript",
+      "Experience with modern CSS and responsive design",
+      "Familiarity with state management libraries"
+    ],
+    "skills": ["React", "JavaScript", "TypeScript", "CSS", "Redux"],
+    "posted": "1 week ago",
+    "deadline": "2026-02-28",
+    "remote": true,
+    "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Meta_Platforms_Inc._logo.svg/512px-Meta_Platforms_Inc._logo.svg.png"
+  },
+  {
+    "id": 3,
+    "title": "Data Science Intern",
+    "company": "Amazon",
+    "location": "Seattle, WA",
+    "type": "Internship",
+    "salary": "$7,500 - $9,500/month",
+    "description": "Work with Amazon's data science team to analyze massive datasets and build machine learning models that power recommendations for millions.",
+    "requirements": [
+      "Pursuing degree in Data Science, Statistics, or related field",
+      "Experience with Python and SQL",
+      "Knowledge of machine learning algorithms",
+      "Strong analytical and communication skills"
+    ],
+    "skills": ["Python", "SQL", "Machine Learning", "Statistics", "TensorFlow"],
+    "posted": "3 days ago",
+    "deadline": "2026-02-25",
+    "remote": false,
+    "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Amazon_logo.svg/512px-Amazon_logo.svg.png"
+  }
+]
+

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Job Portal</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    .job, .app {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+    button {
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    input {
+      margin: 5px 0;
+      padding: 6px;
+      width: 300px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>💼 Job Portal</h1>
+
+<hr>
+
+<h2>📌 Available Jobs</h2>
+<div id="jobs"></div>
+
+<hr>
+
+<h2>📄 Applications Received</h2>
+<div id="applications"></div>
+
+<hr>
+
+<h2>➕ Add New Job</h2>
+<input id="job_title" placeholder="Job Title"><br>
+<input id="company_name" placeholder="Company Name"><br>
+<input id="skills" placeholder="Skills (comma separated)"><br>
+<input id="location" placeholder="Location (Remote / Onsite)"><br>
+<button onclick="addJob()">Add Job</button>
+
+<script>
+const API_URL = "https://krishnasimha-portal_backend.hf.space";
+
+// ---------------- Load Jobs ----------------
+async function loadJobs() {
+  const res = await fetch(`${API_URL}/jobs`);
+  const jobs = await res.json();
+
+  const jobsDiv = document.getElementById("jobs");
+  jobsDiv.innerHTML = "";
+
+  jobs.forEach(job => {
+    const div = document.createElement("div");
+    div.className = "job";
+    div.innerHTML = `
+      <h3>${job.job_title}</h3>
+      <p><b>Company:</b> ${job.company_name}</p>
+      <p><b>Location:</b> ${job.location}</p>
+      <p><b>Skills:</b> ${job.skills.join(", ")}</p>
+      <button onclick="apply('${job.job_id}')">Apply</button>
+    `;
+    jobsDiv.appendChild(div);
+  });
+}
+
+// ---------------- Apply ----------------
+async function apply(job_id) {
+  const name = prompt("Enter your name:");
+  if (!name) return;
+
+  await fetch(`${API_URL}/apply`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      job_id: job_id,
+      student_name: name
+    })
+  });
+
+  alert("Application submitted!");
+  loadApplications();
+}
+
+// ---------------- Load Applications ----------------
+async function loadApplications() {
+  const res = await fetch(`${API_URL}/applications`);
+  const apps = await res.json();
+
+  const appsDiv = document.getElementById("applications");
+  appsDiv.innerHTML = "";
+
+  apps.forEach(app => {
+    const div = document.createElement("div");
+    div.className = "app";
+    div.innerHTML = `
+      <p><b>${app.student_name}</b> applied for job <b>${app.job_id}</b></p>
+      <p>Status: ${app.status}</p>
+      <p>Time: ${app.timestamp}</p>
+    `;
+    appsDiv.appendChild(div);
+  });
+}
+
+// ---------------- Add Job ----------------
+async function addJob() {
+  const title = document.getElementById("job_title").value;
+  const company = document.getElementById("company_name").value;
+  const skills = document.getElementById("skills").value;
+  const location = document.getElementById("location").value;
+
+  await fetch(`${API_URL}/add_job`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      job_title: title,
+      company_name: company,
+      skills: skills.split(",").map(s => s.trim()),
+      location: location
+    })
+  });
+
+  alert("Job added!");
+  loadJobs();
+}
+
+// Initial Load
+loadJobs();
+loadApplications();
+</script>
+
+</body>
+</html>
+

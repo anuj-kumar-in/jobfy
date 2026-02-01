@@ -18,6 +18,8 @@ def init_db():
     
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    
+    # Create jobs table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS jobs (
             id INTEGER PRIMARY KEY,
@@ -35,9 +37,21 @@ def init_db():
             logo TEXT
         )
     """)
+    
+    # Create applications table (required for /apply endpoint)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS applications (
+            application_id TEXT PRIMARY KEY,
+            job_id TEXT,
+            student_name TEXT,
+            status TEXT,
+            timestamp TEXT
+        )
+    """)
+    
     conn.commit()
     conn.close()
-    print("✅ Database initialized successfully")
+    print("✅ Database initialized successfully (jobs + applications tables)")
 
 # -------------------- Insert Jobs --------------------
 def insert_jobs(jobs_list: list):

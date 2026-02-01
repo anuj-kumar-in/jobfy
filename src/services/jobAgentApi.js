@@ -44,7 +44,7 @@ export const checkBackendHealth = async () => {
  */
 export const fetchAgentJobs = async () => {
     try {
-        const response = await fetch(`${AGENT_API}/jobs`, {
+        const response = await fetch(`${PORTAL_API}/jobs`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -243,13 +243,19 @@ export const applyToJob = async ({
     proofs = {}
 }) => {
     try {
+        // Always convert job_id to string as the backend expects string type
+        // Also remove common prefixes like 'agent-', 'backend-', etc.
+        let cleanJobId = String(jobId).replace(/^(agent-|backend-|local-)/, '');
+
         const payload = {
-            job_id: jobId,
-            student_name: studentName,
-            resume: resume,
-            bullets: bullets,
-            proofs: proofs
+            job_id: cleanJobId,
+            student_name: studentName || 'Anonymous',
+            resume: resume || {},
+            bullets: Array.isArray(bullets) ? bullets : [],
+            proofs: proofs || {}
         };
+
+        console.log('Applying to job with payload:', { job_id: cleanJobId, student_name: studentName });
 
         const response = await fetch(`${PORTAL_API}/apply`, {
             method: 'POST',

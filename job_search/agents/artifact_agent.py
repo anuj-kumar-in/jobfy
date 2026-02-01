@@ -51,7 +51,9 @@ Schema:
     {{"company": null, "role": null, "description": null}}
   ],
   "skills": [],
-  "links": []
+  "links": [],
+  "preferred_location": null,
+  "remote_preference": null
 }}
 
 Resume:

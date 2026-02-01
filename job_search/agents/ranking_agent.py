@@ -31,9 +31,9 @@ def rank_jobs(jobs, student_profile):
         jaccard = len(intersection) / max(len(union_skills), 1)
         # blend the metrics, favoring overlap relative to job requirements
         skill_score = 0.75 * overlap_by_job + 0.25 * jaccard
-        # small smoothing boost if there's at least one matching skill
+        # smaller boost if there's at least one matching skill
         if len(intersection) >= 1:
-            skill_score = min(skill_score + 0.05, 1.0)
+            skill_score = min(skill_score + 0.03, 1.0)
 
         # 2. Role score (20%) - preferred role in job title
         role_score = 1.0 if role and role in job_title else 0.0
@@ -55,12 +55,11 @@ def rank_jobs(jobs, student_profile):
         elif remote_preference is None:  # Flexible
             remote_score = 0.5
 
-        # Calculate weighted score — further increase emphasis on skills so
-        # partial but relevant matches rate higher for practical applying.
-        score = (0.7 * skill_score +
-             0.12 * role_score +
-             0.12 * location_score +
-             0.06 * remote_score)
+# Calculate weighted score — balance skill emphasis with other factors
+        score = (0.65 * skill_score +
+                 0.15 * role_score +
+                 0.15 * location_score +
+                 0.05 * remote_score)
 
         ranked.append({
             "job": job,

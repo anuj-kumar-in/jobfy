@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { jobs as localJobs } from '../data/jobs';
 import { addAppliedJob } from '../config/firebase';
+import {
+    fetchBackendJobs,
+    applyToJob,
+    prepareApplicationPayload,
+    checkBackendHealth
+} from '../services/jobAgentApi';
 import {
     Search,
     MapPin,
@@ -24,15 +31,21 @@ import {
     Play,
     Pause,
     RefreshCw,
-    AlertCircle
+    AlertCircle,
+    Cloud,
+    Wifi,
+    Server
 } from 'lucide-react';
 
 const JOBS_PER_PAGE = 8;
 
 const JobsPage = () => {
     const { user, userProfile, refreshProfile } = useAuth();
-    const [allJobs, setAllJobs] = useState([]);
+    const [backendJobs, setBackendJobs] = useState([]);
+    const [backendConnected, setBackendConnected] = useState(false);
+    const [loadingBackend, setLoadingBackend] = useState(true);
     const [loadingJobs, setLoadingJobs] = useState(true);
+    const [jobSource, setJobSource] = useState('all'); // 'all', 'local', 'backend'
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
     const [filterRemote, setFilterRemote] = useState('all');
@@ -43,6 +56,13 @@ const JobsPage = () => {
     const [visibleJobs, setVisibleJobs] = useState(JOBS_PER_PAGE);
     const [loadingMore, setLoadingMore] = useState(false);
 
+    // Combined jobs from local + backend (computed, not state)
+    const allJobs = jobSource === 'local'
+        ? localJobs
+        : jobSource === 'backend'
+            ? backendJobs
+            : [...localJobs, ...backendJobs];
+
     // AI Pickup state
     const [aiMode, setAiMode] = useState(false);
     const [aiProgress, setAiProgress] = useState({
@@ -52,24 +72,38 @@ const JobsPage = () => {
         appliedJobs: [],
         skippedJobs: [],
         currentJob: null,
-        status: 'idle' // idle, searching, analyzing, applying, completed, paused
+        status: 'idle', // idle, searching, analyzing, applying, completed, paused
+        useBackendAgent: false // flag to use Krishna's agent
     });
 
-    // Fetch jobs from API
+    // Fetch backend jobs on mount
     useEffect(() => {
-        const fetchJobs = async () => {
+        const initializeBackend = async () => {
+            setLoadingBackend(true);
             try {
-                const response = await fetch('http://localhost:8000/jobs');
-                if (!response.ok) throw new Error('Failed to fetch jobs');
-                const data = await response.json();
-                setAllJobs(data);
-                setLoadingJobs(false);
+                // Check if backend is available
+                const isHealthy = await checkBackendHealth();
+                setBackendConnected(isHealthy);
+
+                if (isHealthy) {
+                    // Fetch jobs from backend
+                    const jobs = await fetchBackendJobs();
+                    console.log('Backend jobs:', jobs);
+                    setBackendJobs(jobs);
+                    console.log(`✅ Connected to backend. Loaded ${jobs.length} jobs.`);
+                } else {
+                    console.log('⚠️ Backend not available, using local jobs only.');
+                }
             } catch (error) {
-                console.error('Error fetching jobs:', error);
+                console.error('Backend initialization error:', error);
+                setBackendConnected(false);
+            } finally {
+                setLoadingBackend(false);
                 setLoadingJobs(false);
             }
         };
-        fetchJobs();
+
+        initializeBackend();
     }, []);
 
     // Get applied job IDs from user profile
@@ -77,15 +111,24 @@ const JobsPage = () => {
 
     // Filter jobs
     const filteredJobs = allJobs.filter(job => {
-        const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            job.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
-        const matchesType = filterType === 'all' || job.type.toLowerCase() === filterType.toLowerCase();
+        const title = job.title || '';
+        const company = job.company || '';
+        const skills = job.skills || [];
+        const type = job.type || '';
+
+        const matchesSearch = title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            skills.some(skill => (skill || '').toLowerCase().includes(searchTerm.toLowerCase()));
+
+        const matchesType = filterType === 'all' || type.toLowerCase() === filterType.toLowerCase();
+
         const matchesRemote = filterRemote === 'all' ||
             (filterRemote === 'remote' && job.remote) ||
             (filterRemote === 'onsite' && !job.remote);
+
         return matchesSearch && matchesType && matchesRemote;
     });
+
 
     // Get displayed jobs (paginated)
     const displayedJobs = filteredJobs.slice(0, visibleJobs);
@@ -94,7 +137,7 @@ const JobsPage = () => {
     // Reset visible jobs when filters change
     useEffect(() => {
         setVisibleJobs(JOBS_PER_PAGE);
-    }, [searchTerm, filterType, filterRemote]);
+    }, [searchTerm, filterType, filterRemote, jobSource]);
 
     // Load more jobs
     const handleViewMore = async () => {
@@ -125,15 +168,35 @@ const JobsPage = () => {
         setApplying(prev => ({ ...prev, [job.id]: true }));
 
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Prepare application payload for backend
+            const { resume, bullets, proofs } = prepareApplicationPayload(userProfile);
 
+            // If this is a backend job OR backend is connected, submit to backend API
+            if (job.source === 'backend' || backendConnected) {
+                const backendResult = await applyToJob({
+                    jobId: job.jobId || job.id.toString(),
+                    studentName: userProfile?.fullName || user.displayName || 'Anonymous',
+                    resume: resume,
+                    bullets: bullets,
+                    proofs: proofs
+                });
+
+                if (backendResult.success) {
+                    console.log('✅ Applied via backend:', backendResult);
+                } else {
+                    console.warn('⚠️ Backend apply failed:', backendResult.error);
+                }
+            }
+
+            // Also save to Firebase for local tracking
             await addAppliedJob(user.uid, {
                 id: job.id,
                 title: job.title,
                 company: job.company,
                 location: job.location,
-                type: job.type
+                type: job.type,
+                source: job.source || 'local',
+                appliedViaBackend: backendConnected
             });
 
             await refreshProfile();
@@ -161,10 +224,14 @@ const JobsPage = () => {
             appliedJobs: [],
             skippedJobs: [],
             currentJob: null,
-            status: 'searching'
+            status: 'searching',
+            useBackendAgent: backendConnected
         });
 
-        // Simulate AI processing jobs
+        // Prepare application payload once for all jobs
+        const { resume, bullets, proofs } = prepareApplicationPayload(userProfile);
+
+        // Process jobs using AI
         for (let i = 0; i < filteredJobs.length && aiProgress.isRunning; i++) {
             const job = filteredJobs[i];
 
@@ -184,10 +251,10 @@ const JobsPage = () => {
                 status: 'analyzing'
             }));
 
-            // Simulate AI analysis delay
+            // AI analysis delay
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // Simulate match calculation (placeholder for LLM integration)
+            // Calculate match score
             const matchScore = calculateMatchScore(job, userProfile);
 
             if (matchScore >= 70) {
@@ -196,17 +263,35 @@ const JobsPage = () => {
                     status: 'applying'
                 }));
 
-                // Simulate application submission
-                await new Promise(resolve => setTimeout(resolve, 1500));
-
                 try {
+                    // Apply via backend if connected
+                    if (backendConnected) {
+                        const backendResult = await applyToJob({
+                            jobId: job.jobId || job.id.toString(),
+                            studentName: userProfile?.fullName || user.displayName || 'Anonymous',
+                            resume: resume,
+                            bullets: bullets,
+                            proofs: proofs
+                        });
+
+                        if (backendResult.success) {
+                            console.log('✅ AI Applied via backend:', job.title, backendResult);
+                        } else {
+                            console.warn('⚠️ Backend apply failed for', job.title, ':', backendResult.error);
+                        }
+                    }
+
+                    // Save to Firebase for local tracking
                     await addAppliedJob(user.uid, {
                         id: job.id,
                         title: job.title,
                         company: job.company,
                         location: job.location,
                         type: job.type,
-                        matchScore
+                        matchScore,
+                        source: job.source || 'local',
+                        appliedViaBackend: backendConnected,
+                        appliedViaAI: true
                     });
 
                     setAiProgress(prev => ({
@@ -216,6 +301,11 @@ const JobsPage = () => {
                     }));
                 } catch (error) {
                     console.error('AI Apply error:', error);
+                    setAiProgress(prev => ({
+                        ...prev,
+                        processedJobs: prev.processedJobs + 1,
+                        skippedJobs: [...prev.skippedJobs, { ...job, reason: 'Application failed' }]
+                    }));
                 }
             } else {
                 setAiProgress(prev => ({
@@ -242,8 +332,11 @@ const JobsPage = () => {
     const calculateMatchScore = (job, profile) => {
         if (!profile?.skills?.length) return Math.floor(Math.random() * 40) + 30;
 
-        const jobSkills = job.skills.map(s => s.toLowerCase());
-        const userSkills = profile.skills.map(s => s.toLowerCase());
+        const skills = Array.isArray(job.skills) ? job.skills : [];
+        if (skills.length === 0) return Math.floor(Math.random() * 40) + 30;
+
+        const jobSkills = skills.map(s => (s || '').toLowerCase());
+        const userSkills = profile.skills.map(s => (s || '').toLowerCase());
 
         const matchingSkills = jobSkills.filter(skill =>
             userSkills.some(userSkill => userSkill.includes(skill) || skill.includes(userSkill))
@@ -281,22 +374,80 @@ const JobsPage = () => {
     return (
         <div className="min-h-screen bg-gray-50 pt-20 pb-12">
             <div className="max-w-7xl mx-auto px-4">
-                {/* Header */}
+                {/* Header with Backend Status */}
                 <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-black mb-2">Find Your Dream Job</h1>
-                    <p className="text-gray-600">Discover {allJobs.length}+ opportunities from top companies</p>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h1 className="text-4xl font-bold text-black mb-2">Find Your Dream Job</h1>
+                            <p className="text-gray-600">Discover {allJobs.length}+ opportunities from top companies</p>
+                        </div>
+
+                        {/* Backend Status & Job Source Filter */}
+                        <div className="mt-4 md:mt-0 flex items-center space-x-4">
+                            {/* Backend Connection Status */}
+                            <div className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium ${loadingBackend
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : backendConnected
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                <div className={`w-2 h-2 rounded-full ${loadingBackend
+                                    ? 'bg-yellow-500 animate-pulse'
+                                    : backendConnected
+                                        ? 'bg-green-500'
+                                        : 'bg-gray-400'
+                                    }`} />
+                                <span>
+                                    {loadingBackend
+                                        ? 'Connecting...'
+                                        : backendConnected
+                                            ? 'Agent Connected'
+                                            : 'Local Only'}
+                                </span>
+                            </div>
+
+                            {/* Job Source Filter */}
+                            {backendConnected && (
+                                <select
+                                    value={jobSource}
+                                    onChange={(e) => setJobSource(e.target.value)}
+                                    className="px-4 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-black focus:border-black transition-all"
+                                >
+                                    <option value="all">All Jobs ({localJobs.length + backendJobs.length})</option>
+                                    <option value="local">Local Jobs ({localJobs.length})</option>
+                                    <option value="backend">Agent Jobs ({backendJobs.length})</option>
+                                </select>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* AI Pickup Banner */}
                 <div className="mb-8 p-6 bg-gradient-to-r from-black to-gray-800 rounded-2xl text-white">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                         <div className="flex items-center space-x-4 mb-4 md:mb-0">
-                            <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center">
+                            <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center relative">
                                 <Bot size={28} />
+                                {backendConnected && (
+                                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                        <Wifi size={10} />
+                                    </div>
+                                )}
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold">AI Pickup</h2>
-                                <p className="text-gray-300">Let AI analyze jobs and auto-apply based on your profile</p>
+                                <h2 className="text-xl font-bold flex items-center space-x-2">
+                                    <span>AI Pickup</span>
+                                    {backendConnected && (
+                                        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                                            Agent Enabled
+                                        </span>
+                                    )}
+                                </h2>
+                                <p className="text-gray-300">
+                                    {backendConnected
+                                        ? 'AI will analyze jobs and apply via Krishna\'s Agent backend'
+                                        : 'Let AI analyze jobs and auto-apply based on your profile'}
+                                </p>
                             </div>
                         </div>
 

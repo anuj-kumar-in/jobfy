@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { jobs as allJobs } from '../data/jobs';
 import { addAppliedJob } from '../config/firebase';
 import {
     Search,
@@ -32,6 +31,8 @@ const JOBS_PER_PAGE = 8;
 
 const JobsPage = () => {
     const { user, userProfile, refreshProfile } = useAuth();
+    const [allJobs, setAllJobs] = useState([]);
+    const [loadingJobs, setLoadingJobs] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
     const [filterRemote, setFilterRemote] = useState('all');
@@ -53,6 +54,23 @@ const JobsPage = () => {
         currentJob: null,
         status: 'idle' // idle, searching, analyzing, applying, completed, paused
     });
+
+    // Fetch jobs from API
+    useEffect(() => {
+        const fetchJobs = async () => {
+            try {
+                const response = await fetch('http://localhost:8000/jobs');
+                if (!response.ok) throw new Error('Failed to fetch jobs');
+                const data = await response.json();
+                setAllJobs(data);
+                setLoadingJobs(false);
+            } catch (error) {
+                console.error('Error fetching jobs:', error);
+                setLoadingJobs(false);
+            }
+        };
+        fetchJobs();
+    }, []);
 
     // Get applied job IDs from user profile
     const appliedJobIds = userProfile?.appliedJobs?.map(job => job.id) || [];
@@ -441,6 +459,15 @@ const JobsPage = () => {
                 </div>
 
                 {/* Results */}
+                {loadingJobs ? (
+                    <div className="flex items-center justify-center py-16">
+                        <div className="text-center">
+                            <Loader className="animate-spin mx-auto mb-4" size={32} />
+                            <p className="text-gray-600">Loading jobs...</p>
+                        </div>
+                    </div>
+                ) : (
+                    <>
                 <div className="flex items-center justify-between mb-6">
                     <p className="text-gray-600">
                         Showing <span className="font-semibold text-black">{displayedJobs.length}</span> of <span className="font-semibold text-black">{filteredJobs.length}</span> jobs
@@ -729,6 +756,7 @@ const JobsPage = () => {
                             </div>
                         </div>
                     </div>
+                    </>
                 )}
             </div>
         </div>

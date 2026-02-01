@@ -424,10 +424,25 @@ const JobsPage = () => {
             userSkills.some(userSkill => userSkill.includes(skill) || skill.includes(userSkill))
         );
 
-        const baseScore = (matchingSkills.length / jobSkills.length) * 100;
-        const randomFactor = Math.random() * 20 - 10; // Add some variance
+        const intersectionCount = matchingSkills.length;
+        const jobCount = jobSkills.length || 1;
+        const userCount = userSkills.length || 1;
+        const unionCount = new Set([...jobSkills, ...userSkills]).size || 1;
 
-        return Math.min(100, Math.max(0, Math.floor(baseScore + randomFactor)));
+        // Blend overlap relative to job, overlap relative to user, and Jaccard similarity
+        const overlapByJob = intersectionCount / jobCount;
+        const overlapByUser = intersectionCount / userCount;
+        const jaccard = intersectionCount / unionCount;
+
+        let score = (0.6 * overlapByJob + 0.25 * overlapByUser + 0.15 * jaccard) * 100;
+
+        // Small boost if at least one matching skill
+        if (intersectionCount >= 1) score = Math.min(100, score + 8);
+
+        // Reduce random noise so scores are more stable
+        const randomFactor = Math.random() * 10 - 5;
+
+        return Math.min(100, Math.max(0, Math.floor(score + randomFactor)));
     };
 
     // Stop AI Pickup

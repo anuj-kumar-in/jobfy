@@ -3,6 +3,11 @@ import os
 import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+# Prefer FastAPI's response; fall back to Starlette if needed at runtime
+try:
+    from fastapi.responses import RedirectResponse
+except Exception:
+    from starlette.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import requests
@@ -16,7 +21,7 @@ from agents.apply_policy import should_apply
 
 # Configuration
 PORTAL_API = os.getenv("PORTAL_API", "https://krishnasimha-portal-backend.hf.space")
-TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY", "888fb84e1b638788f3b6e59865697fa5e52ade7a091e1a1777aa883eb92ddbba")
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
 
 app = FastAPI(
     title="JobFy AI Agent API",
@@ -183,6 +188,12 @@ def generate_reasoning(score: float, matching_skills: list, missing_skills: list
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "JobFy AI Agent"}
+
+
+@app.get("/")
+async def root():
+    """Root route: redirect to API docs to avoid 404 at /"""
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/jobs")
@@ -414,6 +425,8 @@ async def parse_resume(request: ResumeParseRequest):
         if not request.resume_text.strip():
             raise HTTPException(status_code=400, detail="Resume text is empty")
         
+        if not TOGETHER_API_KEY:
+            raise HTTPException(status_code=500, detail="TOGETHER_API_KEY not set in environment")
         agent = ArtifactAgent(TOGETHER_API_KEY)
         artifacts = await agent.run_async(request.resume_text)
         

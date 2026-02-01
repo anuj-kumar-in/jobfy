@@ -13,7 +13,11 @@ def run_agent(student_name: str, preferred_role: str, resume_text: str, together
     print(f"🤖 Agent started for {student_name}")
 
     # 1️⃣ Artifact generation
-    artifact_agent = ArtifactAgent("888fb84e1b638788f3b6e59865697fa5e52ade7a091e1a1777aa883eb92ddbba")
+    key = together_api_key or os.getenv("TOGETHER_API_KEY")
+    if not key:
+        raise RuntimeError("TOGETHER_API_KEY not provided via parameter or environment")
+
+    artifact_agent = ArtifactAgent(key)
     artifacts = asyncio.run(artifact_agent.run_async(resume_text))
 
     student_profile = artifacts["profile"]

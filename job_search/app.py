@@ -17,7 +17,11 @@ def run_agent(student_payload: dict, together_api_key: str):
     print("🤖 Agent booting for:", student_name)
 
     # -------- Artifact Generation --------
-    agent = ArtifactAgent("888fb84e1b638788f3b6e59865697fa5e52ade7a091e1a1777aa883eb92ddbba")
+    key = together_api_key or os.getenv("TOGETHER_API_KEY")
+    if not key:
+        raise RuntimeError("TOGETHER_API_KEY is required (parameter or environment)")
+
+    agent = ArtifactAgent(key)
     artifacts = agent.run(resume_text)
 
     student_profile = artifacts["profile"]

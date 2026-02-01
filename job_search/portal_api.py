@@ -1,15 +1,20 @@
 # portal_backend.py
 import sqlite3
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from datetime import datetime
 import uuid
 
-DB_FILE = "jobs.db"
+DB_FILE = os.path.join(os.path.dirname(__file__), "jobs.db")
 
 # ---------------- DB UTILS ----------------
 def get_connection():
+    # ensure folder exists
+    db_dir = os.path.dirname(DB_FILE)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
     return sqlite3.connect(DB_FILE, check_same_thread=False)
 
 def init_db():
@@ -57,9 +62,13 @@ class Application(BaseModel):
 # ---------------- ENDPOINTS ----------------
 @app.get("/jobs")
 def get_jobs():
-    conn = get_connection()
-    rows = conn.execute("SELECT * FROM jobs").fetchall()
-    conn.close()
+    try:
+        conn = get_connection()
+        rows = conn.execute("SELECT * FROM jobs").fetchall()
+        conn.close()
+    except sqlite3.OperationalError:
+        # DB/tables missing — return empty list instead of 500
+        return []
     return [
         {
             "job_id": r[0],
@@ -72,9 +81,13 @@ def get_jobs():
 
 @app.get("/applications")
 def get_applications():
-    conn = get_connection()
-    rows = conn.execute("SELECT * FROM applications ORDER BY timestamp DESC").fetchall()
-    conn.close()
+    try:
+        conn = get_connection()
+        rows = conn.execute("SELECT * FROM applications ORDER BY timestamp DESC").fetchall()
+        conn.close()
+    except sqlite3.OperationalError:
+        return []
+
     return [
         {
             "application_id": r[0],
@@ -89,22 +102,43 @@ def get_applications():
 def apply_job(app: Application):
     application_id = str(uuid.uuid4())
     timestamp = datetime.utcnow().isoformat()
-    conn = get_connection()
-    conn.execute(
-        "INSERT INTO applications VALUES (?,?,?,?,?)",
-        (application_id, app.job_id, app.student_name, "submitted", timestamp)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO applications VALUES (?,?,?,?,?)",
+            (application_id, app.job_id, app.student_name, "submitted", timestamp)
+        )
+        conn.commit()
+        conn.close()
+    except sqlite3.OperationalError:
+        # Likely missing table — try to initialize DB and retry once
+        init_db()
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO applications VALUES (?,?,?,?,?)",
+            (application_id, app.job_id, app.student_name, "submitted", timestamp)
+        )
+        conn.commit()
+        conn.close()
     return {"status": "submitted", "application_id": application_id, "timestamp": timestamp}
 
 @app.post("/add_job")
 def add_job(job_title: str, company_name: str, skills: list[str], location: str):
-    conn = get_connection()
-    conn.execute(
-        "INSERT INTO jobs VALUES (?,?,?,?,?)",
-        (str(uuid.uuid4()), job_title, company_name, ",".join(skills), location)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO jobs VALUES (?,?,?,?,?)",
+            (str(uuid.uuid4()), job_title, company_name, ",".join(skills), location)
+        )
+        conn.commit()
+        conn.close()
+    except sqlite3.OperationalError:
+        init_db()
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO jobs VALUES (?,?,?,?,?)",
+            (str(uuid.uuid4()), job_title, company_name, ",".join(skills), location)
+        )
+        conn.commit()
+        conn.close()
     return {"status": "success"}

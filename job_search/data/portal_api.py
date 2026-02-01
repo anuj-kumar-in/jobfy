@@ -7,7 +7,7 @@ import uuid
 import json
 import os
 
-DB_FILE = "jobs.db"
+DB_FILE = os.path.join(os.path.dirname(__file__), "jobs.db")
 
 # ---------------- App Init ----------------
 app = FastAPI(
@@ -30,48 +30,51 @@ app.add_middleware(
 
 # ---------------- DB Utilities ----------------
 def get_connection():
+    # ensure db directory exists
+    db_dir = os.path.dirname(DB_FILE)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL;")  # concurrency safe
     return conn
 
 def init_db():
-    # Remove old DB for schema consistency
-    if not os.path.exists(DB_FILE):
-        conn = get_connection()
-        c = conn.cursor()
-        # Jobs table
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS jobs (
-                id INTEGER PRIMARY KEY,
-                title TEXT,
-                company TEXT,
-                location TEXT,
-                type TEXT,
-                salary TEXT,
-                description TEXT,
-                requirements TEXT,
-                skills TEXT,
-                posted TEXT,
-                deadline TEXT,
-                remote INTEGER,
-                logo TEXT
-            )
-        """)
-        # Applications table (8 columns)
-        c.execute("""
-            CREATE TABLE IF NOT EXISTS applications (
-                application_id TEXT PRIMARY KEY,
-                job_id TEXT,
-                student_name TEXT,
-                resume TEXT,
-                bullets TEXT,
-                proofs TEXT,
-                status TEXT,
-                timestamp TEXT
-            )
-        """)
-        conn.commit()
-        conn.close()
+    # Always ensure required tables exist (safe to call multiple times)
+    conn = get_connection()
+    c = conn.cursor()
+    # Jobs table
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS jobs (
+            id INTEGER PRIMARY KEY,
+            title TEXT,
+            company TEXT,
+            location TEXT,
+            type TEXT,
+            salary TEXT,
+            description TEXT,
+            requirements TEXT,
+            skills TEXT,
+            posted TEXT,
+            deadline TEXT,
+            remote INTEGER,
+            logo TEXT
+        )
+    """)
+    # Applications table (8 columns)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS applications (
+            application_id TEXT PRIMARY KEY,
+            job_id TEXT,
+            student_name TEXT,
+            resume TEXT,
+            bullets TEXT,
+            proofs TEXT,
+            status TEXT,
+            timestamp TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
 
 init_db()
 
@@ -106,9 +109,15 @@ def health():
 # ---------------- Jobs ----------------
 @app.get("/jobs")
 def get_jobs():
-    conn = get_connection()
-    rows = conn.execute("SELECT * FROM jobs").fetchall()
-    conn.close()
+    try:
+        conn = get_connection()
+        rows = conn.execute("SELECT * FROM jobs").fetchall()
+        conn.close()
+    except sqlite3.OperationalError:
+        # If tables missing, initialize and return empty list
+        init_db()
+        return []
+
     return [
         {
             "id": r[0],
@@ -130,35 +139,64 @@ def get_jobs():
 
 @app.post("/add_job")
 def add_job(job: JobCreate):
-    conn = get_connection()
-    conn.execute(
-        """INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (
-            job.id,
-            job.title,
-            job.company,
-            job.location,
-            job.type,
-            job.salary,
-            job.description,
-            json.dumps(job.requirements),
-            json.dumps(job.skills),
-            job.posted,
-            job.deadline,
-            int(job.remote),
-            job.logo,
-        ),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_connection()
+        conn.execute(
+            """INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                job.id,
+                job.title,
+                job.company,
+                job.location,
+                job.type,
+                job.salary,
+                job.description,
+                json.dumps(job.requirements),
+                json.dumps(job.skills),
+                job.posted,
+                job.deadline,
+                int(job.remote),
+                job.logo,
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except sqlite3.OperationalError:
+        init_db()
+        conn = get_connection()
+        conn.execute(
+            """INSERT INTO jobs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                job.id,
+                job.title,
+                job.company,
+                job.location,
+                job.type,
+                job.salary,
+                job.description,
+                json.dumps(job.requirements),
+                json.dumps(job.skills),
+                job.posted,
+                job.deadline,
+                int(job.remote),
+                job.logo,
+            ),
+        )
+        conn.commit()
+        conn.close()
     return {"status": "success", "job_id": job.id}
 
 # ---------------- Applications ----------------
 @app.get("/applications")
 def get_applications():
-    conn = get_connection()
-    rows = conn.execute("SELECT * FROM applications ORDER BY timestamp DESC").fetchall()
-    conn.close()
+    try:
+        conn = get_connection()
+        rows = conn.execute("SELECT * FROM applications ORDER BY timestamp DESC").fetchall()
+        conn.close()
+    except sqlite3.OperationalError:
+        init_db()
+        return []
+
     return [
         {
             "application_id": r[0],
@@ -173,20 +211,40 @@ def get_applications():
 @app.post("/apply")
 def apply_job(req: ApplyRequest):
     application_id = str(uuid.uuid4())
-    conn = get_connection()
-    conn.execute(
-        "INSERT INTO applications VALUES (?,?,?,?,?,?,?,?)",
-        (
-            application_id,
-            req.job_id,
-            req.student_name,
-            json.dumps(req.resume),
-            json.dumps(req.bullets),
-            json.dumps(req.proofs),
-            "submitted",
-            datetime.utcnow().isoformat(),
-        ),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO applications VALUES (?,?,?,?,?,?,?,?)",
+            (
+                application_id,
+                req.job_id,
+                req.student_name,
+                json.dumps(req.resume),
+                json.dumps(req.bullets),
+                json.dumps(req.proofs),
+                "submitted",
+                datetime.utcnow().isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except sqlite3.OperationalError:
+        # Try to create missing tables then retry
+        init_db()
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO applications VALUES (?,?,?,?,?,?,?,?)",
+            (
+                application_id,
+                req.job_id,
+                req.student_name,
+                json.dumps(req.resume),
+                json.dumps(req.bullets),
+                json.dumps(req.proofs),
+                "submitted",
+                datetime.utcnow().isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
     return {"status": "success", "application_id": application_id}

@@ -24,23 +24,16 @@ export const fetchBackendJobs = async () => {
 
         const jobs = await response.json();
 
-        // Transform backend job format to match frontend format
+        // The backend now returns jobs in the same format as local jobs
+        // Just add the source marker and ensure all fields exist
         return jobs.map(job => ({
-            id: `backend-${job.job_id}`,
-            jobId: job.job_id, // Keep original ID for API calls
-            title: job.job_title,
-            company: job.company_name,
-            location: job.location,
-            skills: Array.isArray(job.skills) ? job.skills : job.skills?.split(',') || [],
-            type: 'Full-time', // Default if not provided
-            salary: 'Competitive',
-            description: `Exciting opportunity at ${job.company_name}`,
-            requirements: [],
-            posted: 'Recently',
-            deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            remote: false,
-            logo: null,
-            source: 'backend' // Mark as coming from backend
+            ...job, // Spread all existing fields (id, title, company, etc.)
+            id: `backend-${job.id}`, // Prefix ID to avoid conflicts with local jobs
+            jobId: job.id, // Keep original ID for API calls
+            source: 'backend', // Mark as coming from backend
+            // Ensure arrays exist
+            skills: job.skills || [],
+            requirements: job.requirements || [],
         }));
     } catch (error) {
         console.error('Error fetching backend jobs:', error);

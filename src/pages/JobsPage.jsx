@@ -41,11 +41,6 @@ const JOBS_PER_PAGE = 8;
 
 const JobsPage = () => {
     const { user, userProfile, refreshProfile } = useAuth();
-    const [backendJobs, setBackendJobs] = useState([]);
-    const [backendConnected, setBackendConnected] = useState(false);
-    const [loadingBackend, setLoadingBackend] = useState(true);
-    const [loadingJobs, setLoadingJobs] = useState(true);
-    const [jobSource, setJobSource] = useState('all'); // 'all', 'local', 'backend'
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
     const [filterRemote, setFilterRemote] = useState('all');
@@ -56,7 +51,13 @@ const JobsPage = () => {
     const [visibleJobs, setVisibleJobs] = useState(JOBS_PER_PAGE);
     const [loadingMore, setLoadingMore] = useState(false);
 
-    // Combined jobs from local + backend (computed, not state)
+    // Backend integration state
+    const [backendJobs, setBackendJobs] = useState([]);
+    const [backendConnected, setBackendConnected] = useState(false);
+    const [loadingBackend, setLoadingBackend] = useState(true);
+    const [jobSource, setJobSource] = useState('all'); // 'all', 'local', 'backend'
+
+    // Combined jobs from local + backend
     const allJobs = jobSource === 'local'
         ? localJobs
         : jobSource === 'backend'
@@ -99,7 +100,6 @@ const JobsPage = () => {
                 setBackendConnected(false);
             } finally {
                 setLoadingBackend(false);
-                setLoadingJobs(false);
             }
         };
 
@@ -610,15 +610,6 @@ const JobsPage = () => {
                 </div>
 
                 {/* Results */}
-                {loadingJobs ? (
-                    <div className="flex items-center justify-center py-16">
-                        <div className="text-center">
-                            <Loader className="animate-spin mx-auto mb-4" size={32} />
-                            <p className="text-gray-600">Loading jobs...</p>
-                        </div>
-                    </div>
-                ) : (
-                    <>
                 <div className="flex items-center justify-between mb-6">
                     <p className="text-gray-600">
                         Showing <span className="font-semibold text-black">{displayedJobs.length}</span> of <span className="font-semibold text-black">{filteredJobs.length}</span> jobs
@@ -907,7 +898,6 @@ const JobsPage = () => {
                             </div>
                         </div>
                     </div>
-                    </>
                 )}
             </div>
         </div>

@@ -65,14 +65,39 @@ export const getUserProfile = async (userId) => {
 
 export const addAppliedJob = async (userId, jobData) => {
     try {
-        const applicationData = {
-            ...jobData,
+        // Helper function to remove undefined values (Firebase doesn't accept undefined)
+        const cleanObject = (obj) => {
+            if (obj === null || obj === undefined) return null;
+            if (typeof obj !== 'object') return obj;
+            if (Array.isArray(obj)) {
+                return obj.map(item => cleanObject(item)).filter(item => item !== undefined);
+            }
+            const cleaned = {};
+            for (const [key, value] of Object.entries(obj)) {
+                if (value !== undefined) {
+                    cleaned[key] = cleanObject(value);
+                }
+            }
+            return cleaned;
+        };
+
+        const applicationData = cleanObject({
+            id: jobData.id || null,
+            jobId: jobData.jobId || null,
+            title: jobData.title || '',
+            company: jobData.company || '',
+            location: jobData.location || '',
+            type: jobData.type || '',
+            logo: jobData.logo || null,
+            source: jobData.source || 'local',
             appliedAt: new Date().toISOString(),
             status: jobData.status || 'applied',
             matchScore: jobData.matchScore || null,
             explanation: jobData.explanation || null,
+            appliedViaBackend: jobData.appliedViaBackend || false,
+            appliedViaAI: jobData.appliedViaAI || false,
             lastUpdated: new Date().toISOString()
-        };
+        });
 
         await updateDoc(doc(db, "users", userId), {
             appliedJobs: arrayUnion(applicationData)

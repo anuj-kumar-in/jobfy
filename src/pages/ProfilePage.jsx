@@ -234,27 +234,184 @@ const ProfilePage = () => {
         }));
     };
 
-    // Extract data from resume text using Gemini (placeholder for LLM integration)
+    // Extract data from resume text using Gemini AI
     const extractFromResume = async () => {
         if (!resumeText.trim()) return;
 
         setExtracting(true);
         try {
-            // TODO: Replace with actual Gemini API call
-            // This is a placeholder that simulates extraction
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-            // Placeholder: In production, this would be parsed by Gemini
-            // For now, we'll just set a basic structure
-            alert('AI extraction will be integrated here. For now, please fill in the form manually or paste structured data.');
+            if (!GEMINI_API_KEY) {
+                alert('Gemini API key not configured. Please add VITE_GEMINI_API_KEY to your .env file.');
+                return;
+            }
 
-            // Example of what the LLM would return:
-            // const extractedData = await callGeminiAPI(resumeText);
-            // setProfile(prev => ({ ...prev, ...extractedData }));
+            const prompt = `You are a resume parser. Extract structured data from the following resume text and return it as a valid JSON object.
+
+Resume Text:
+${resumeText}
+
+Extract the following information and return ONLY a valid JSON object (no markdown, no code blocks, just pure JSON):
+{
+  "fullName": "extracted full name or empty string",
+  "email": "extracted email or empty string",
+  "phone": "extracted phone or empty string",
+  "location": "extracted location/city or empty string",
+  "headline": "professional headline derived from their role/title or empty string",
+  "summary": "professional summary if present or empty string",
+  "linkedin": "linkedin url if present or empty string",
+  "github": "github url if present or empty string",
+  "portfolio": "portfolio url if present or empty string",
+  "education": [
+    {
+      "institution": "university/college name",
+      "degree": "degree type (Bachelor's, Master's, etc.)",
+      "field": "field of study",
+      "startDate": "YYYY-MM format or empty",
+      "endDate": "YYYY-MM format or empty",
+      "gpa": "GPA if mentioned or empty"
+    }
+  ],
+  "experience": [
+    {
+      "company": "company name",
+      "title": "job title",
+      "location": "job location if mentioned",
+      "startDate": "YYYY-MM format or empty",
+      "endDate": "YYYY-MM format or 'Present'",
+      "current": true/false,
+      "description": "job description/responsibilities"
+    }
+  ],
+  "skills": ["skill1", "skill2", ...],
+  "projects": [
+    {
+      "name": "project name",
+      "description": "project description",
+      "technologies": "comma-separated technologies used",
+      "link": "project link if present"
+    }
+  ]
+}
+
+IMPORTANT: Return ONLY the JSON object, nothing else. No explanations, no markdown.`;
+
+            // Use gemini-2.5-flash model
+            const modelName = 'gemini-2.5-flash';
+            const response = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{ text: prompt }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.1,
+                            maxOutputTokens: 4096,
+                        }
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                const errorMsg = errorData.error?.message || `HTTP ${response.status}`;
+                throw new Error(`Gemini API error: ${errorMsg}`);
+            }
+
+            const data = await response.json();
+            const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (!textContent) {
+                throw new Error('No response from Gemini API');
+            }
+
+            // Clean the response - remove markdown code blocks if present
+            let cleanedContent = textContent.trim();
+            if (cleanedContent.startsWith('```json')) {
+                cleanedContent = cleanedContent.replace(/```json\n?/, '').replace(/\n?```$/, '');
+            } else if (cleanedContent.startsWith('```')) {
+                cleanedContent = cleanedContent.replace(/```\n?/, '').replace(/\n?```$/, '');
+            }
+
+            // Parse the JSON
+            const extractedData = JSON.parse(cleanedContent);
+
+            // Update profile with extracted data, adding IDs to arrays
+            setProfile(prev => {
+                const newProfile = { ...prev };
+
+                // Update simple fields
+                if (extractedData.fullName) newProfile.fullName = extractedData.fullName;
+                if (extractedData.email) newProfile.email = extractedData.email;
+                if (extractedData.phone) newProfile.phone = extractedData.phone;
+                if (extractedData.location) newProfile.location = extractedData.location;
+                if (extractedData.headline) newProfile.headline = extractedData.headline;
+                if (extractedData.summary) newProfile.summary = extractedData.summary;
+                if (extractedData.linkedin) newProfile.linkedin = extractedData.linkedin;
+                if (extractedData.github) newProfile.github = extractedData.github;
+                if (extractedData.portfolio) newProfile.portfolio = extractedData.portfolio;
+
+                // Update education array with IDs
+                if (extractedData.education && extractedData.education.length > 0) {
+                    newProfile.education = extractedData.education.map((edu, index) => ({
+                        id: Date.now() + index,
+                        institution: edu.institution || '',
+                        degree: edu.degree || '',
+                        field: edu.field || '',
+                        startDate: edu.startDate || '',
+                        endDate: edu.endDate || '',
+                        gpa: edu.gpa || ''
+                    }));
+                }
+
+                // Update experience array with IDs
+                if (extractedData.experience && extractedData.experience.length > 0) {
+                    newProfile.experience = extractedData.experience.map((exp, index) => ({
+                        id: Date.now() + 1000 + index,
+                        company: exp.company || '',
+                        title: exp.title || '',
+                        location: exp.location || '',
+                        startDate: exp.startDate || '',
+                        endDate: exp.current ? '' : (exp.endDate || ''),
+                        current: exp.current || false,
+                        description: exp.description || ''
+                    }));
+                }
+
+                // Update skills array
+                if (extractedData.skills && extractedData.skills.length > 0) {
+                    newProfile.skills = [...new Set([...prev.skills, ...extractedData.skills])];
+                }
+
+                // Update projects array with IDs
+                if (extractedData.projects && extractedData.projects.length > 0) {
+                    newProfile.projects = extractedData.projects.map((proj, index) => ({
+                        id: Date.now() + 2000 + index,
+                        name: proj.name || '',
+                        description: proj.description || '',
+                        technologies: proj.technologies || '',
+                        link: proj.link || ''
+                    }));
+                }
+
+                return newProfile;
+            });
+
+            alert('✅ Resume data extracted successfully! Please review and edit the data in each tab, then save your profile.');
 
         } catch (error) {
             console.error('Extraction error:', error);
-            alert('Failed to extract data. Please try again.');
+            if (error.message.includes('JSON')) {
+                alert('Failed to parse the extracted data. Please try again or fill in the form manually.');
+            } else {
+                alert(`Failed to extract data: ${error.message}`);
+            }
         } finally {
             setExtracting(false);
         }

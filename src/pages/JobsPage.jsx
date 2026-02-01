@@ -107,7 +107,22 @@ const JobsPage = () => {
     }, []);
 
     // Get applied job IDs from user profile
-    const appliedJobIds = userProfile?.appliedJobs?.map(job => job.id) || [];
+    const appliedJobsList = userProfile?.appliedJobs || [];
+
+    // Helper to check if a job is already applied
+    const isJobAlreadyApplied = (jobId) => {
+        if (!jobId) return false;
+        const idString = String(jobId);
+        // Clean ID (remove prefixes)
+        const cleanId = idString.replace(/^(agent-|backend-|local-)/, '');
+
+        return appliedJobsList.some(applied => {
+            const appliedId = String(applied.id);
+            const appliedCleanId = appliedId.replace(/^(agent-|backend-|local-)/, '');
+
+            return appliedId === idString || appliedCleanId === cleanId;
+        });
+    };
 
     // Filter jobs
     const filteredJobs = allJobs.filter(job => {
@@ -165,6 +180,11 @@ const JobsPage = () => {
             return;
         }
 
+        if (isJobAlreadyApplied(job.id)) {
+            alert('You have already applied to this job!');
+            return;
+        }
+
         setApplying(prev => ({ ...prev, [job.id]: true }));
 
         try {
@@ -195,6 +215,7 @@ const JobsPage = () => {
                 company: job.company,
                 location: job.location,
                 type: job.type,
+                logo: job.logo,
                 source: job.source || 'local',
                 appliedViaBackend: backendConnected
             });
@@ -287,7 +308,7 @@ const JobsPage = () => {
                 const explanation = rankedItem.explanation;
 
                 // Skip already applied jobs
-                if (appliedJobIds.includes(job.id)) {
+                if (isJobAlreadyApplied(job.id)) {
                     setAiProgress(prev => ({
                         ...prev,
                         processedJobs: prev.processedJobs + 1,
@@ -338,6 +359,7 @@ const JobsPage = () => {
                             company: job.company,
                             location: job.location,
                             type: job.type,
+                            logo: job.logo,
                             matchScore,
                             explanation: explanation,
                             source: job.source || 'agent',
@@ -510,9 +532,7 @@ const JobsPage = () => {
                                     )}
                                 </h2>
                                 <p className="text-gray-300">
-                                    {backendConnected
-                                        ? 'AI will analyze jobs and apply via Krishna\'s Agent backend'
-                                        : 'Let AI analyze jobs and auto-apply based on your profile'}
+                                    Let AI analyze jobs and auto-apply based on your profile
                                 </p>
                             </div>
                         </div>
@@ -604,8 +624,8 @@ const JobsPage = () => {
                                     </span>
                                     {aiProgress.currentJob.matchScore && (
                                         <span className={`px-2 py-0.5 rounded-full text-xs ${aiProgress.currentJob.matchScore >= 80 ? 'bg-green-500/20 text-green-400' :
-                                                aiProgress.currentJob.matchScore >= 60 ? 'bg-yellow-500/20 text-yellow-400' :
-                                                    'bg-red-500/20 text-red-400'
+                                            aiProgress.currentJob.matchScore >= 60 ? 'bg-yellow-500/20 text-yellow-400' :
+                                                'bg-red-500/20 text-red-400'
                                             }`}>
                                             {aiProgress.currentJob.matchScore}% Match
                                         </span>
@@ -700,7 +720,7 @@ const JobsPage = () => {
                 {/* Jobs Grid */}
                 <div className="grid lg:grid-cols-2 gap-6">
                     {displayedJobs.map((job) => {
-                        const isApplied = appliedJobIds.includes(job.id);
+                        const isApplied = isJobAlreadyApplied(job.id);
                         const isSaved = savedJobs.includes(job.id);
                         const isApplying = applying[job.id];
 

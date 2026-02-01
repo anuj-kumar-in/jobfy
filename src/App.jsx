@@ -5,6 +5,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import JobsPage from './pages/JobsPage';
+import ApplicationsPage from './pages/ApplicationsPage';
 import './index.css';
 
 // Protected Route component
@@ -52,6 +53,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <JobsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/applications"
+            element={
+              <ProtectedRoute>
+                <ApplicationsPage />
               </ProtectedRoute>
             }
           />
